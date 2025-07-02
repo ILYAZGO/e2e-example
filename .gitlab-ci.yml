@@ -1,0 +1,73 @@
+stages:
+  - test
+  - report
+
+tests:
+  stage: test
+  resource_group: e2e-stand-requests
+  image: mcr.microsoft.com/playwright/python:v1.53.0-noble
+  artifacts:
+    when: always
+    expire_in: 1 days
+    paths:
+      - exec.log
+      - allure-report
+  before_script:
+#    - cat /etc/apt/sources.list.d/ubuntu.sources
+    - echo "Change http to https in /etc/apt/sources.list.d/ubuntu.sources"
+    - sed -i 's|http://|https://|g' /etc/apt/sources.list.d/ubuntu.sources
+    - date
+    - echo "Download and install java"
+    - apt update && apt install -y openjdk-17-jdk openjdk-17-jre
+    - date
+    - echo "Download and install wget"
+    - apt-get install wget
+    - date
+    - echo "Download and install allure"
+    - wget https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz && tar -zxvf allure-${ALLURE_VERSION}.tgz -C /opt/ && ln -s /opt/allure-${ALLURE_VERSION}/bin/allure /usr/bin/allure
+    - date
+    - echo "Download and install requirements"
+    - pip install -r requirements.txt --default-timeout=100
+    - date
+
+  script:
+    - echo "Create sparse file"
+    - dd if=/dev/zero of="$(pwd)/audio/1_2GB.opus" bs=1 count=0 seek=1200000000
+    - ls -l "$(pwd)/audio/"
+    - echo $URL_FOR_TEST
+    - echo "Execute api tests"
+    - pytest -m api -v -n 90 --reruns=${RERUNS_NUMBER} --alluredir=allure-results || echo "API tests failed, but continuing"
+    - echo "Execute E2E (by default 'chromium', choose from 'chromium', 'firefox', 'webkit')"
+    - pytest -m e2e -n 54 --base-url ${URL_FOR_TEST} --browser ${BROWSER} --reruns=${RERUNS_NUMBER} --alluredir=allure-results
+    - echo "Remove sparse file"
+    - rm -f "$(pwd)/audio/1_2GB.opus"
+    - ls -l "$(pwd)/audio/"
+
+  after_script:
+    - echo "Send notification to telegram"
+    - if [ $CI_JOB_STATUS == 'failed' ]; then curl -s -X POST -d "chat_id=${TELEGRAM_CHAT_ID}&text=' !!! E2E tests failed !!!%0A%0A$URL_FOR_TEST%0A%0AREPORT http://192.168.10.101/E2E/ '&parse_mode=Markdown" "https://api.telegram.org/bot${TELEGRAM_API_TOKEN}/sendMessage"; fi
+    - echo "Generate allure report"
+    - allure generate -c allure-results -o allure-report
+
+pages:
+    stage: report
+    tags:
+      - stand
+    when:
+      always
+    needs:
+        - tests
+    script:
+        - mkdir public
+        - cp -r allure-report/* public
+        - URL_FOR_TEST_ENCODED=$(echo "$URL_FOR_TEST" | sed 's/\//|/g')
+        - rm -rf /home/frontend/public/E2E/e2e_${URL_FOR_TEST_ENCODED}/*
+        - mkdir -p "/home/frontend/public/E2E/e2e_${URL_FOR_TEST_ENCODED}/allure"
+        - mv -v allure-report/* "/home/frontend/public/E2E/e2e_${URL_FOR_TEST_ENCODED}/allure"
+        - mv -v exec.log /home/frontend/public/E2E/e2e_${URL_FOR_TEST_ENCODED}/
+
+    artifacts:
+        when: always
+        expire_in: 7 days
+        paths:
+            - public
