@@ -45,8 +45,8 @@ def create_user(url: str, role: str, password: str,
     }
 
     data = {
-        'username': '4adminIM',
-        'password': 'Qaz123wsX'
+        'username': '*******',
+        'password': '*******'
     }
 
     get_token = r.post(f"{url}/token", headers=headers_for_get_token, data=data).json()
