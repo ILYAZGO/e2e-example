@@ -9,10 +9,10 @@ wait_until_visible = 80000
 # LIST OF CREDENTIALS
 
 USER_FOR_CHECK = "comparelogin"
-PASSWORD = "Qaz123wsX!"
+PASSWORD = "******"
 
 ECOTELECOM = "ecotelecom"  # used for calls and reports test
-ECOPASS = "ecopass1)"      # used for calls and reports test
+ECOPASS = "*******"      # used for calls and reports test
 
 importFrom_user_id = '64b923905f95f6305573e619'
 
