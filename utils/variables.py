@@ -1,6 +1,6 @@
 # LIST OF URLS
 #URL = "https://app.stand.imot.io/ru"
-API_URL = "https://api.stand.imot.io"
+API_URL = "https://api.*****.imot.io"
 
 # LIST OF TIMEOUTS
 
